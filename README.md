@@ -33,8 +33,6 @@ http://localhost:8000 でアクセスできます。
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-http://localhost:8080 でアクセスできます。
-
 ## 🛠️ 技術スタック
 
 - **Backend**: FastAPI + Jinja2
