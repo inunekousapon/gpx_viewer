@@ -1,0 +1,92 @@
+# GPX Map Viewer
+
+design:
+  name: "GPX Map Viewer"
+  version: "1.0.0"
+  created_at: "2026-01-27"
+
+summary:
+  purpose: "GPXファイルをアップロードし、位置情報を地図上にプロットするWebアプリケーション"
+  scope: "GPXファイル読み込み、位置情報抽出、OpenStreetMap上へのプロット表示"
+
+architecture:
+  type: "Monolith（FastAPI + Jinja2）"
+  components:
+    - name: "Frontend"
+      responsibility: "ファイルアップロードUI、地図表示"
+      technology: "Jinja2, Leaflet.js, OpenStreetMap"
+
+    - name: "Backend"
+      responsibility: "GPXファイル解析、位置情報抽出"
+      technology: "FastAPI, Python xml.etree"
+
+    - name: "GPX Parser"
+      responsibility: "GPXファイルからtrackpoint（緯度・経度・時刻・高度）を抽出"
+      technology: "Python xml.etree.ElementTree"
+
+  data_flow:
+    - from: "User"
+      to: "Frontend"
+      description: "GPXファイルをアップロード"
+
+    - from: "Frontend"
+      to: "Backend"
+      description: "multipart/form-dataでファイル送信"
+
+    - from: "Backend"
+      to: "GPX Parser"
+      description: "XMLパース依頼"
+
+    - from: "GPX Parser"
+      to: "Backend"
+      description: "トラックポイントリスト返却"
+
+    - from: "Backend"
+      to: "Frontend"
+      description: "HTMLレスポンス（地図+トラックデータ）"
+
+decisions:
+  - id: "ADR-001"
+    title: "地図ライブラリの選定"
+    context: "OpenStreetMapを使用する要件"
+    decision: "Leaflet.jsを使用"
+    rationale: "軽量でOpenStreetMapとの相性が良い、ドキュメント豊富"
+    consequences: "クライアントサイドでの地図描画"
+
+  - id: "ADR-002"
+    title: "GPXパース方法"
+    context: "GPXはXML形式"
+    decision: "Python標準ライブラリxml.etree.ElementTreeを使用"
+    rationale: "外部依存なし、シンプルなXMLなので十分"
+    consequences: "追加パッケージ不要"
+
+  - id: "ADR-003"
+    title: "ファイルアップロード方式"
+    context: "GPXファイルをサーバーに送信"
+    decision: "multipart/form-dataでPOST"
+    rationale: "標準的なファイルアップロード方式"
+    consequences: "python-multipartパッケージ必要"
+
+removed_designs:
+  - name: "データベース保存"
+    reason: "要件にない、シンプルさ優先"
+
+  - name: "ユーザー認証"
+    reason: "要件にない"
+
+  - name: "REST API"
+    reason: "テンプレートベースのSSRに特化"
+
+added_designs:
+  - name: "トラック全体の自動ズーム"
+    reason: "UX向上：アップロード後に適切な縮尺で表示"
+
+  - name: "高度情報の表示"
+    reason: "GPXに含まれる情報を活用"
+
+  - name: "ドラッグ&ドロップ対応"
+    reason: "UX向上：直感的なファイルアップロード"
+
+next_skill:
+  name: "task-splitter"
+  input_file: "design_to_task.yaml"

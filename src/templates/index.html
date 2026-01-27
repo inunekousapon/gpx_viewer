@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="upload-section">
+    <h2>{{ title }}</h2>
+    
+    {% if error %}
+    <div class="alert alert-error">
+        {{ error }}
+    </div>
+    {% endif %}
+    
+    <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-content">
+                <svg class="dropzone-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="dropzone-text">GPXファイルをドラッグ＆ドロップ</p>
+                <p class="dropzone-subtext">または</p>
+                <label class="file-label">
+                    <input type="file" name="file" accept=".gpx" id="fileInput" required>
+                    <span class="file-button">ファイルを選択</span>
+                </label>
+                <p class="selected-file" id="selectedFile"></p>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+            地図に表示する
+        </button>
+    </form>
+</div>
+
+<div class="features">
+    <h3>機能</h3>
+    <ul>
+        <li>GPXファイルのアップロード</li>
+        <li>トラックポイントを地図上にプロット</li>
+        <li>OpenStreetMapを使用した地図表示</li>
+        <li>ルート全体の自動ズーム</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const selectedFile = document.getElementById('selectedFile');
+    const submitBtn = document.getElementById('submitBtn');
+    const form = document.getElementById('uploadForm');
+
+    // ファイル選択時
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            selectedFile.textContent = '選択されたファイル: ' + this.files[0].name;
+            submitBtn.disabled = false;
+        } else {
+            selectedFile.textContent = '';
+            submitBtn.disabled = true;
+        }
+    });
+
+    // ドラッグ＆ドロップ
+    dropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.toLowerCase().endsWith('.gpx')) {
+                fileInput.files = files;
+                selectedFile.textContent = '選択されたファイル: ' + file.name;
+                submitBtn.disabled = false;
+            } else {
+                alert('GPXファイル（.gpx）を選択してください');
+            }
+        }
+    });
+
+    // フォーム送信時のローディング
+    form.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '処理中...';
+    });
+});
+</script>
+{% endblock %}

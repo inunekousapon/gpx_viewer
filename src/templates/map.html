@@ -1,0 +1,1012 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ app_name }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map {
+        height: 45vh;
+        min-height: 300px;
+        max-height: 500px;
+        width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .map-info {
+        margin-bottom: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    .map-info h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+    }
+    .map-info p {
+        margin: 0.15rem 0;
+        font-size: 0.85rem;
+        color: #666;
+    }
+    .back-link {
+        display: inline-block;
+        margin-bottom: 1rem;
+        color: #007bff;
+        text-decoration: none;
+    }
+    .back-link:hover {
+        text-decoration: underline;
+    }
+    .time-slider-container {
+        margin-bottom: 1rem;
+        padding: 1.25rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .time-slider-container h4 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        color: #333;
+    }
+    .time-slider-wrapper {
+        margin-bottom: 1rem;
+    }
+    .time-slider {
+        width: 100%;
+        height: 8px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #e0e0e0;
+        border-radius: 4px;
+        outline: none;
+        cursor: pointer;
+    }
+    .time-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #007bff;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: transform 0.1s ease;
+    }
+    .time-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+    }
+    .time-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #007bff;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .time-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: #999;
+        margin-top: 0.5rem;
+    }
+    .current-time-display {
+        text-align: center;
+        padding: 0.75rem;
+        background: #f0f7ff;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .current-time-display .time {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #007bff;
+    }
+    .current-time-display .date {
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    .slider-controls {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .slider-controls button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: background 0.2s ease;
+    }
+    .slider-controls .play-btn {
+        background: #28a745;
+        color: #fff;
+    }
+    .slider-controls .play-btn:hover {
+        background: #218838;
+    }
+    .slider-controls .play-btn.playing {
+        background: #dc3545;
+    }
+    .slider-controls .play-btn.playing:hover {
+        background: #c82333;
+    }
+    .slider-controls .reset-btn {
+        background: #6c757d;
+        color: #fff;
+    }
+    .slider-controls .reset-btn:hover {
+        background: #545b62;
+    }
+    .slider-controls .speed-btn {
+        background: #17a2b8;
+        color: #fff;
+        min-width: 60px;
+    }
+    .slider-controls .speed-btn:hover {
+        background: #138496;
+    }
+    .position-info {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: #d4edda;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        color: #155724;
+        display: none;
+    }
+    .position-info.show {
+        display: block;
+    }
+    .position-info .coords {
+        margin-bottom: 0.5rem;
+    }
+    .position-info .address {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(21, 87, 36, 0.2);
+    }
+    .position-info .address-loading {
+        color: #666;
+        font-style: italic;
+    }
+    .position-info .address-item {
+        margin: 0.25rem 0;
+    }
+    .position-info .address-label {
+        font-weight: 500;
+        color: #155724;
+    }
+    .no-time-warning {
+        padding: 0.75rem;
+        background: #fff3cd;
+        border-radius: 4px;
+        color: #856404;
+        font-size: 0.875rem;
+    }
+    .api-notice {
+        margin-top: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        background: #e7f3ff;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #0056b3;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .api-notice a {
+        color: #0056b3;
+        text-decoration: underline;
+    }
+    .api-notice a:hover {
+        color: #003d82;
+    }
+    /* 標高グラフ - 折りたたみ式 */
+    .elevation-chart-container {
+        margin-top: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .elevation-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: #f8f9fa;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s ease;
+    }
+    .elevation-header:hover {
+        background: #e9ecef;
+    }
+    .elevation-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .elevation-header .summary {
+        font-size: 0.75rem;
+        color: #666;
+        font-weight: normal;
+    }
+    .elevation-toggle {
+        font-size: 0.75rem;
+        color: #007bff;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .elevation-toggle .arrow {
+        transition: transform 0.2s ease;
+    }
+    .elevation-chart-container.open .elevation-toggle .arrow {
+        transform: rotate(180deg);
+    }
+    .elevation-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    .elevation-chart-container.open .elevation-content {
+        max-height: 400px;
+    }
+    .elevation-chart-wrapper {
+        position: relative;
+        height: 180px;
+        padding: 0.5rem 1rem;
+    }
+    .elevation-stats {
+        display: flex;
+        gap: 1rem;
+        padding: 0.5rem 1rem 0.75rem;
+        font-size: 0.7rem;
+        color: #666;
+        flex-wrap: wrap;
+        border-top: 1px solid #eee;
+    }
+    .elevation-stats .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+    }
+    .elevation-stats .stat-value {
+        font-weight: 600;
+        color: #333;
+    }
+    /* レイアウトコンテナ */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    /* タイムスライダーコンパクト化 */
+    .time-slider-container {
+        margin-bottom: 0;
+        padding: 0.75rem 1rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .time-slider-container h4 {
+        display: none;
+    }
+    .current-time-display {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.25rem;
+        background: #f0f7ff;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+    }
+    .current-time-display .date {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0;
+    }
+    .current-time-display .time {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #007bff;
+    }
+    .time-slider-wrapper {
+        margin-bottom: 0.5rem;
+    }
+    .slider-controls {
+        margin-bottom: 0.5rem;
+    }
+    .slider-controls button {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    .position-info {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    .position-info .coords {
+        margin-bottom: 0.25rem;
+    }
+    .position-info .address {
+        margin-top: 0.25rem;
+        padding-top: 0.25rem;
+    }
+    .api-notice {
+        margin-top: 0.5rem;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.65rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/" class="back-link">← 別のファイルをアップロード</a>
+
+<div class="map-info">
+    <h3>{{ gpx_data.filename }}</h3>
+    <p>トラックポイント数: {{ gpx_data.point_count }}点</p>
+    {% if gpx_data.time_range %}
+    <p style="font-size: 0.85rem; color: #666;">
+        記録期間: {{ gpx_data.time_range.start_local }} ～ {{ gpx_data.time_range.end_local }}
+    </p>
+    {% endif %}
+</div>
+
+{% if gpx_data.time_range %}
+<div class="main-content">
+    <!-- 地図（上部） -->
+    <div id="map"></div>
+    
+    <!-- タイムスライダー（コンパクト） -->
+    <div class="time-slider-container">
+        <h4>🕐 タイムスライダー</h4>
+        
+        <div class="current-time-display">
+            <div class="date" id="currentDate">-</div>
+            <div class="time" id="currentTime">--:--:--</div>
+        </div>
+        
+        <div class="time-slider-wrapper">
+            <input type="range" class="time-slider" id="timeSlider" min="0" max="100" value="0" step="0.01">
+            <div class="time-labels">
+                <span id="startTimeLabel">{{ gpx_data.time_range.start_local }}</span>
+                <span id="endTimeLabel">{{ gpx_data.time_range.end_local }}</span>
+            </div>
+        </div>
+        
+        <div class="slider-controls">
+            <button type="button" class="play-btn" id="playBtn">▶ 再生</button>
+            <button type="button" class="speed-btn" id="speedBtn">1x</button>
+            <button type="button" class="reset-btn" id="resetBtn">リセット</button>
+        </div>
+        
+        <div class="position-info" id="positionInfo">
+            <div class="coords" id="positionText"></div>
+            <div class="address" id="addressInfo">
+                <span class="address-loading">住所を取得中...</span>
+            </div>
+        </div>
+        
+        <div class="api-notice">
+            <span>ℹ️</span>
+            <span>住所情報は <a href="https://operations.osmfoundation.org/policies/nominatim/" target="_blank" rel="noopener">Nominatim</a> を利用。取得は1秒に1回まで。</span>
+        </div>
+    </div>
+    
+    <!-- 標高グラフ（折りたたみ式） -->
+    <div class="elevation-chart-container" id="elevationContainer">
+        <div class="elevation-header" id="elevationHeader">
+            <h4>📈 標高グラフ <span class="summary" id="elevationSummary"></span></h4>
+            <span class="elevation-toggle">詳細 <span class="arrow">▼</span></span>
+        </div>
+        <div class="elevation-content">
+            <div class="elevation-chart-wrapper">
+                <canvas id="elevationChart"></canvas>
+            </div>
+            <div class="elevation-stats" id="elevationStats"></div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="main-content">
+    <div id="map"></div>
+    
+    <div class="time-slider-container">
+        <div class="no-time-warning">
+            ⚠️ このGPXファイルには時刻情報が含まれていないため、タイムスライダーは使用できません。
+        </div>
+    </div>
+    
+    <!-- 標高グラフ（折りたたみ式） -->
+    <div class="elevation-chart-container" id="elevationContainer">
+        <div class="elevation-header" id="elevationHeader">
+            <h4>📈 標高グラフ <span class="summary" id="elevationSummary"></span></h4>
+            <span class="elevation-toggle">詳細 <span class="arrow">▼</span></span>
+        </div>
+        <div class="elevation-content">
+            <div class="elevation-chart-wrapper">
+                <canvas id="elevationChart"></canvas>
+            </div>
+            <div class="elevation-stats" id="elevationStats"></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const gpxData = {{ gpx_data | tojson }};
+    
+    // 地図初期化
+    const map = L.map('map');
+    
+    // OpenStreetMapタイルレイヤー
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // トラックポイントをポリラインとして描画
+    const points = gpxData.points;
+    const latlngs = points.map(p => [p.lat, p.lng]);
+    
+    // ポリライン描画
+    const polyline = L.polyline(latlngs, {
+        color: '#3388ff',
+        weight: 4,
+        opacity: 0.8
+    }).addTo(map);
+    
+    // スタート地点マーカー
+    let startMarker = null;
+    if (points.length > 0) {
+        const startPoint = points[0];
+        startMarker = L.marker([startPoint.lat, startPoint.lng])
+            .bindPopup('<strong>スタート地点</strong><br>' + 
+                (startPoint.time ? '時刻: ' + new Date(startPoint.time).toLocaleString('ja-JP') + '<br>' : '') +
+                (startPoint.ele !== null ? '高度: ' + startPoint.ele.toFixed(1) + 'm' : ''))
+            .addTo(map);
+    }
+    
+    // ゴール地点マーカー
+    let endMarker = null;
+    if (points.length > 1) {
+        const endPoint = points[points.length - 1];
+        endMarker = L.marker([endPoint.lat, endPoint.lng])
+            .bindPopup('<strong>ゴール地点</strong><br>' + 
+                (endPoint.time ? '時刻: ' + new Date(endPoint.time).toLocaleString('ja-JP') + '<br>' : '') +
+                (endPoint.ele !== null ? '高度: ' + endPoint.ele.toFixed(1) + 'm' : ''))
+            .addTo(map);
+    }
+    
+    // 境界ボックスに合わせてズーム
+    function fitMapToBounds() {
+        if (gpxData.bounds) {
+            const bounds = [
+                [gpxData.bounds.min_lat, gpxData.bounds.min_lng],
+                [gpxData.bounds.max_lat, gpxData.bounds.max_lng]
+            ];
+            map.fitBounds(bounds, { padding: [50, 50] });
+        } else if (gpxData.center) {
+            map.setView([gpxData.center.lat, gpxData.center.lng], 13);
+        }
+    }
+    fitMapToBounds();
+
+    // ===== 標高グラフの描画 =====
+    let elevationChart = null;
+    let currentPointIndex = 0;
+    
+    // 標高データを持つポイントを抽出
+    const pointsWithElevation = points.filter(p => p.ele !== null);
+    
+    if (pointsWithElevation.length > 0) {
+        // 距離を計算（累積距離）
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000; // 地球の半径（メートル）
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        // 累積距離とポイントインデックスを計算
+        const distances = [0];
+        const elevationData = [{x: 0, y: points[0].ele || 0, index: 0}];
+        let totalDistance = 0;
+        
+        for (let i = 1; i < points.length; i++) {
+            const prev = points[i-1];
+            const curr = points[i];
+            totalDistance += calculateDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+            distances.push(totalDistance);
+            if (curr.ele !== null) {
+                elevationData.push({x: totalDistance / 1000, y: curr.ele, index: i});
+            }
+        }
+        
+        // 統計情報を計算
+        const elevations = pointsWithElevation.map(p => p.ele);
+        const minEle = Math.min(...elevations);
+        const maxEle = Math.max(...elevations);
+        const avgEle = elevations.reduce((a, b) => a + b, 0) / elevations.length;
+        
+        // 累積上昇・下降を計算
+        let totalAscent = 0;
+        let totalDescent = 0;
+        for (let i = 1; i < pointsWithElevation.length; i++) {
+            const diff = pointsWithElevation[i].ele - pointsWithElevation[i-1].ele;
+            if (diff > 0) totalAscent += diff;
+            else totalDescent += Math.abs(diff);
+        }
+        
+        // 統計表示
+        const statsEl = document.getElementById('elevationStats');
+        statsEl.innerHTML = `
+            <div class="stat-item">📍 総距離: <span class="stat-value">${(totalDistance / 1000).toFixed(2)} km</span></div>
+            <div class="stat-item">⬆️ 最高: <span class="stat-value">${maxEle.toFixed(0)} m</span></div>
+            <div class="stat-item">⬇️ 最低: <span class="stat-value">${minEle.toFixed(0)} m</span></div>
+            <div class="stat-item">📊 平均: <span class="stat-value">${avgEle.toFixed(0)} m</span></div>
+            <div class="stat-item">🔺 累積上昇: <span class="stat-value">${totalAscent.toFixed(0)} m</span></div>
+            <div class="stat-item">🔻 累積下降: <span class="stat-value">${totalDescent.toFixed(0)} m</span></div>
+        `;
+        
+        // サマリー表示（折りたたみ時に見える）
+        const summaryEl = document.getElementById('elevationSummary');
+        summaryEl.textContent = `${(totalDistance / 1000).toFixed(1)}km | ↑${totalAscent.toFixed(0)}m ↓${totalDescent.toFixed(0)}m`;
+        
+        // 折りたたみ機能
+        const elevationContainer = document.getElementById('elevationContainer');
+        const elevationHeader = document.getElementById('elevationHeader');
+        elevationHeader.addEventListener('click', function() {
+            elevationContainer.classList.toggle('open');
+            // グラフのリサイズ
+            if (elevationChart && elevationContainer.classList.contains('open')) {
+                setTimeout(() => elevationChart.resize(), 300);
+            }
+        });
+        
+        // Chart.js でグラフ描画
+        const ctx = document.getElementById('elevationChart').getContext('2d');
+        elevationChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: '標高 (m)',
+                    data: elevationData,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                }, {
+                    label: '現在位置',
+                    data: [],
+                    borderColor: '#dc3545',
+                    backgroundColor: '#dc3545',
+                    pointRadius: 8,
+                    pointHoverRadius: 10,
+                    showLine: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return `距離: ${context[0].parsed.x.toFixed(2)} km`;
+                            },
+                            label: function(context) {
+                                return `標高: ${context.parsed.y.toFixed(1)} m`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: '距離 (km)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1);
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '標高 (m)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(0);
+                            }
+                        }
+                    }
+                },
+                onClick: function(event, elements) {
+                    if (elements.length > 0 && elements[0].datasetIndex === 0) {
+                        const dataIndex = elements[0].index;
+                        const pointIndex = elevationData[dataIndex].index;
+                        // スライダーを移動
+                        if (gpxData.time_range && slider) {
+                            const ratio = pointIndex / (points.length - 1);
+                            slider.value = ratio * 100;
+                            updateFromSlider();
+                        }
+                    }
+                }
+            }
+        });
+        
+        // グラフ上の現在位置を更新する関数
+        window.updateElevationChartPosition = function(pointIndex) {
+            if (!elevationChart) return;
+            
+            // 最も近い標高データポイントを見つける
+            let nearestData = elevationData[0];
+            for (const data of elevationData) {
+                if (data.index <= pointIndex) {
+                    nearestData = data;
+                } else {
+                    break;
+                }
+            }
+            
+            // 現在位置マーカーを更新
+            elevationChart.data.datasets[1].data = [{x: nearestData.x, y: nearestData.y}];
+            elevationChart.update('none');
+        };
+    }
+
+    // 時刻情報がない場合は終了
+    if (!gpxData.time_range) {
+        return;
+    }
+
+    // 現在位置マーカー
+    let currentMarker = null;
+    const currentIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    // 時刻情報を持つポイントのみ抽出
+    const pointsWithTime = points.filter(p => p.time).map(p => ({
+        ...p,
+        timestamp: new Date(p.time).getTime()
+    })).sort((a, b) => a.timestamp - b.timestamp);
+
+    if (pointsWithTime.length === 0) {
+        return;
+    }
+
+    const startTime = pointsWithTime[0].timestamp;
+    const endTime = pointsWithTime[pointsWithTime.length - 1].timestamp;
+    const timeRange = endTime - startTime;
+
+    // UI要素
+    const slider = document.getElementById('timeSlider');
+    const currentDateEl = document.getElementById('currentDate');
+    const currentTimeEl = document.getElementById('currentTime');
+    const playBtn = document.getElementById('playBtn');
+    const speedBtn = document.getElementById('speedBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const positionInfo = document.getElementById('positionInfo');
+    const positionText = document.getElementById('positionText');
+    const addressInfo = document.getElementById('addressInfo');
+
+    // 逆ジオコーディング用のキャッシュとデバウンス
+    const addressCache = new Map();
+    let addressFetchTimeout = null;
+    let lastFetchedCoords = null;
+    let pendingRequest = null;
+
+    // 逆ジオコーディング（サーバー経由で住所取得）
+    async function fetchAddress(lat, lng) {
+        const cacheKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+        
+        // ローカルキャッシュチェック
+        if (addressCache.has(cacheKey)) {
+            return addressCache.get(cacheKey);
+        }
+
+        try {
+            // サーバーサイドのプロキシAPIを使用
+            const response = await fetch(
+                `/api/reverse-geocode?lat=${lat}&lng=${lng}`
+            );
+            
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+            
+            const result = await response.json();
+            
+            // ローカルキャッシュに保存
+            addressCache.set(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error('住所取得エラー:', error);
+            return null;
+        }
+    }
+
+    // 住所表示を更新（デバウンス付き）
+    function updateAddressDisplay(lat, lng) {
+        const coordKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+        
+        // 同じ座標なら更新しない
+        if (lastFetchedCoords === coordKey) {
+            return;
+        }
+        
+        // 既存のタイムアウトをクリア
+        if (addressFetchTimeout) {
+            clearTimeout(addressFetchTimeout);
+        }
+        
+        // ローカルキャッシュにあれば即座に表示（APIを呼ばない）
+        if (addressCache.has(coordKey)) {
+            lastFetchedCoords = coordKey;
+            const addr = addressCache.get(coordKey);
+            renderAddress(addr);
+            return;
+        }
+        
+        // ローディング表示
+        addressInfo.innerHTML = '<span class="address-loading">住所を取得中...</span>';
+        
+        // デバウンス: 300ms後に取得（サーバー側でレート制限されるため短くてOK）
+        addressFetchTimeout = setTimeout(async () => {
+            lastFetchedCoords = coordKey;
+            const addr = await fetchAddress(lat, lng);
+            renderAddress(addr);
+        }, 300);
+    }
+
+    // 住所をHTMLで表示
+    function renderAddress(addr) {
+        if (!addr) {
+            addressInfo.innerHTML = '<span class="address-loading">住所を取得できませんでした</span>';
+            return;
+        }
+        
+        let html = '';
+        if (addr.prefecture) {
+            html += `<div class="address-item"><span class="address-label">🏛️ 都道府県:</span> ${addr.prefecture}</div>`;
+        }
+        if (addr.city) {
+            html += `<div class="address-item"><span class="address-label">🏘️ 市町村:</span> ${addr.city}</div>`;
+        }
+        if (addr.road) {
+            html += `<div class="address-item"><span class="address-label">🛣️ 道路:</span> ${addr.road}</div>`;
+        }
+        
+        if (html === '') {
+            html = '<span class="address-loading">住所情報がありません</span>';
+        }
+        
+        addressInfo.innerHTML = html;
+    }
+
+    // 再生状態
+    let isPlaying = false;
+    let playInterval = null;
+    let playSpeed = 1;
+    const speeds = [1, 2, 5, 10, 50, 100];
+    let speedIndex = 0;
+
+    // 時刻からポイントを検索（線形補間）
+    function getPointAtTime(targetTime) {
+        if (targetTime <= startTime) {
+            return pointsWithTime[0];
+        }
+        if (targetTime >= endTime) {
+            return pointsWithTime[pointsWithTime.length - 1];
+        }
+
+        // 二分探索で近いポイントを見つける
+        let left = 0;
+        let right = pointsWithTime.length - 1;
+        
+        while (left < right - 1) {
+            const mid = Math.floor((left + right) / 2);
+            if (pointsWithTime[mid].timestamp <= targetTime) {
+                left = mid;
+            } else {
+                right = mid;
+            }
+        }
+
+        const p1 = pointsWithTime[left];
+        const p2 = pointsWithTime[right];
+
+        // 線形補間
+        const ratio = (targetTime - p1.timestamp) / (p2.timestamp - p1.timestamp);
+        return {
+            lat: p1.lat + (p2.lat - p1.lat) * ratio,
+            lng: p1.lng + (p2.lng - p1.lng) * ratio,
+            ele: p1.ele !== null && p2.ele !== null 
+                ? p1.ele + (p2.ele - p1.ele) * ratio 
+                : p1.ele,
+            time: new Date(targetTime).toISOString(),
+            timestamp: targetTime
+        };
+    }
+
+    // マーカーを更新
+    function updateMarker(point, targetTime) {
+        const date = new Date(targetTime);
+        
+        // 日時表示を更新
+        currentDateEl.textContent = date.toLocaleDateString('ja-JP', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short'
+        });
+        currentTimeEl.textContent = date.toLocaleTimeString('ja-JP');
+
+        // マーカーを更新
+        if (currentMarker) {
+            currentMarker.setLatLng([point.lat, point.lng]);
+        } else {
+            currentMarker = L.marker([point.lat, point.lng], { icon: currentIcon }).addTo(map);
+        }
+
+        // ポップアップ内容を更新
+        currentMarker.bindPopup(
+            '<strong>📍 現在位置</strong><br>' +
+            '時刻: ' + date.toLocaleString('ja-JP') + '<br>' +
+            (point.ele !== null ? '高度: ' + point.ele.toFixed(1) + 'm<br>' : '') +
+            '緯度: ' + point.lat.toFixed(6) + '<br>' +
+            '経度: ' + point.lng.toFixed(6)
+        );
+
+        // 位置情報表示
+        positionInfo.classList.add('show');
+        positionText.textContent = '📍 緯度: ' + point.lat.toFixed(6) + ', 経度: ' + point.lng.toFixed(6) +
+            (point.ele !== null ? ', 高度: ' + point.ele.toFixed(1) + 'm' : '');
+        
+        // 住所情報を取得・表示
+        updateAddressDisplay(point.lat, point.lng);
+    }
+
+    // スライダー値から時刻を計算して更新
+    function updateFromSlider() {
+        const sliderValue = parseFloat(slider.value);
+        const targetTime = startTime + (timeRange * sliderValue / 100);
+        const point = getPointAtTime(targetTime);
+        updateMarker(point, targetTime);
+        
+        // 標高グラフの現在位置を更新
+        const pointIndex = Math.floor(sliderValue / 100 * (points.length - 1));
+        if (window.updateElevationChartPosition) {
+            window.updateElevationChartPosition(pointIndex);
+        }
+    }
+
+    // スライダーイベント
+    slider.addEventListener('input', function() {
+        updateFromSlider();
+    });
+
+    // 再生ボタン
+    playBtn.addEventListener('click', function() {
+        if (isPlaying) {
+            // 停止
+            isPlaying = false;
+            clearInterval(playInterval);
+            playBtn.textContent = '▶ 再生';
+            playBtn.classList.remove('playing');
+        } else {
+            // 再生開始
+            isPlaying = true;
+            playBtn.textContent = '⏸ 停止';
+            playBtn.classList.add('playing');
+            
+            // 最後まで行っていたら最初から
+            if (parseFloat(slider.value) >= 100) {
+                slider.value = 0;
+            }
+
+            playInterval = setInterval(function() {
+                let newValue = parseFloat(slider.value) + 0.1 * playSpeed;
+                if (newValue >= 100) {
+                    newValue = 100;
+                    isPlaying = false;
+                    clearInterval(playInterval);
+                    playBtn.textContent = '▶ 再生';
+                    playBtn.classList.remove('playing');
+                }
+                slider.value = newValue;
+                updateFromSlider();
+            }, 50);
+        }
+    });
+
+    // 速度ボタン
+    speedBtn.addEventListener('click', function() {
+        speedIndex = (speedIndex + 1) % speeds.length;
+        playSpeed = speeds[speedIndex];
+        speedBtn.textContent = playSpeed + 'x';
+    });
+
+    // リセットボタン
+    resetBtn.addEventListener('click', function() {
+        // 再生停止
+        if (isPlaying) {
+            isPlaying = false;
+            clearInterval(playInterval);
+            playBtn.textContent = '▶ 再生';
+            playBtn.classList.remove('playing');
+        }
+
+        // スライダーをリセット
+        slider.value = 0;
+        
+        // マーカーを削除
+        if (currentMarker) {
+            map.removeLayer(currentMarker);
+            currentMarker = null;
+        }
+
+        // 表示をリセット
+        currentDateEl.textContent = '-';
+        currentTimeEl.textContent = '--:--:--';
+        positionInfo.classList.remove('show');
+        addressInfo.innerHTML = '<span class="address-loading">住所を取得中...</span>';
+        lastFetchedCoords = null;
+
+        // 標高グラフの現在位置をリセット
+        if (window.updateElevationChartPosition) {
+            window.updateElevationChartPosition(0);
+        }
+
+        // 全体表示に戻す
+        fitMapToBounds();
+    });
+
+    // 初期表示
+    updateFromSlider();
+});
+</script>
+{% endblock %}
