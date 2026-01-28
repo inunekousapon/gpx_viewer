@@ -167,6 +167,55 @@ body {
     cursor: not-allowed;
 }
 
+.btn-secondary {
+    background: #6c757d;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-demo {
+    background: #17a2b8;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-demo:hover {
+    background: #138496;
+}
+
+/* サンプルセクション */
+.sample-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.sample-text {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.sample-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.sample-buttons .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+}
+
 /* アラート */
 .alert {
     padding: 1rem;

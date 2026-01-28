@@ -71,3 +71,15 @@ def test_upload_with_empty_gpx_returns_error(client: TestClient) -> None:
     # Assert
     assert response.status_code == 200
     assert "位置情報が含まれていません" in response.text
+
+
+def test_demo_returns_map_with_sample_gpx(client: TestClient) -> None:
+    """デモページがサンプルGPXの地図を表示する"""
+    # Act
+    response = client.get("/demo")
+
+    # Assert
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "leaflet" in response.text.lower()
+    assert "サンプル.gpx" in response.text

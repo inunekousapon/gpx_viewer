@@ -77,10 +77,12 @@ desktop.ini
 
 # Uploaded files (if stored locally)
 uploads/
-*.gpx
 
 # Temporary files
 tmp/
 temp/
 *.tmp
 *.temp
+
+# ansible
+ansible/

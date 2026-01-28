@@ -1,12 +1,17 @@
 """ホームページルーター"""
 
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
 from fastapi import APIRouter, Request, UploadFile, File
 from fastapi.responses import HTMLResponse
 from typing import Any
 
 from src.dependencies import TemplateResponse
 from src.services.gpx_parser import GpxParser, GpxParseError
+
+# サンプルGPXファイルのパス
+SAMPLE_GPX_PATH = Path(__file__).parent.parent / "static" / "samples" / "sample.gpx"
 
 
 router = APIRouter()
@@ -66,6 +71,82 @@ def index(request: Request) -> Any:
         TemplateResponse(request)
         .add_context(title="GPXファイルをアップロード", gpx_data=None, error=None)
         .render("index.html")
+    )
+
+
+@router.get("/demo", response_class=HTMLResponse)
+def demo(request: Request) -> Any:
+    """サンプルGPXファイルでデモ表示"""
+    # サンプルGPXファイルを読み込み
+    try:
+        content = SAMPLE_GPX_PATH.read_bytes()
+    except Exception:
+        return (
+            TemplateResponse(request)
+            .add_context(
+                title="エラー",
+                gpx_data=None,
+                error="サンプルファイルの読み込みに失敗しました",
+            )
+            .render("index.html")
+        )
+
+    # GPXパース
+    parser = GpxParser()
+    try:
+        gpx_data = parser.parse(content)
+    except GpxParseError as e:
+        return (
+            TemplateResponse(request)
+            .add_context(
+                title="エラー",
+                gpx_data=None,
+                error=f"サンプルファイルの解析に失敗しました: {e}",
+            )
+            .render("index.html")
+        )
+
+    # ポイント取得
+    points = gpx_data.get_all_points()
+
+    # 地図表示用データ作成
+    center = gpx_data.get_center()
+    bounds = gpx_data.get_bounds()
+    time_range = get_time_range(points)
+
+    # JavaScript用にポイントデータを変換
+    points_for_js = [
+        {
+            "lat": p.latitude,
+            "lng": p.longitude,
+            "ele": p.elevation,
+            "time": p.time,
+        }
+        for p in points
+    ]
+
+    return (
+        TemplateResponse(request)
+        .add_context(
+            title="デモ - 東京タワー周辺散策",
+            gpx_data={
+                "filename": "サンプル.gpx",
+                "point_count": len(points),
+                "center": {"lat": center[0], "lng": center[1]} if center else None,
+                "bounds": {
+                    "min_lat": bounds[0],
+                    "min_lng": bounds[1],
+                    "max_lat": bounds[2],
+                    "max_lng": bounds[3],
+                }
+                if bounds
+                else None,
+                "points": points_for_js,
+                "time_range": time_range,
+            },
+            error=None,
+        )
+        .render("map.html")
     )
 
 
